@@ -5,27 +5,16 @@ import os
 import multiprocessing
 import statistics
 
-# ================= 配置 =================
-TARGET_IP = '192.168.1.104'
+TARGET_IP = ''
 TARGET_PORT = 9999
 
-# 控制参数
 SLEEP_INTERVAL = 0.001
-# 原 DTLS 负载是 1400，加上头部约 1437 字节
-# Scheme 头部开销大 (签名+贡献值)，为了保持总大小一致，需减少 Payload
-# Fixed Header: 8(TS) + 4(Nonce) + 32(Contrib) + 512(Sig) = 556 bytes
-# Target Payload = 1437 - 556 = 881 bytes
 PAYLOAD_SIZE = 881
 PROCESS_COUNT = multiprocessing.cpu_count()
-ATTACK_DURATION = 10  # [修改] 攻击持续时间 (秒)
+ATTACK_DURATION = 10 
 
 
 class SchemeAttacker:
-    """
-    构造基于自定义 Scheme 认证协议的攻击包
-    目标：使包格式合法，但内容无法通过 Time Bloom Filter (tBF) 验证
-    """
-    #
     HASH_LEN = 32
     NUM_SUBKEYS = 16
 
@@ -128,4 +117,5 @@ if __name__ == "__main__":
         print("\n[!] Attack stopped by user early.")
         for p in processes:
             p.terminate()
+
             p.join()
