@@ -6,7 +6,7 @@ import multiprocessing
 import statistics
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
-TARGET_IP = '192.168.1.104'
+TARGET_IP = 
 TARGET_PORT = 9999
 
 SESSION_KEY = b'\xab' * 16
@@ -130,4 +130,5 @@ if __name__ == "__main__":
         print("\n[!] Attack stopped by user early.")
         for p in processes:
             p.terminate()
+
             p.join()
