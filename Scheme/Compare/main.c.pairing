@@ -1,0 +1,144 @@
+/*
+ * MIRACL Core Bilinear Pairing Example for CH32V307VCT6
+ * Curve: BN254 (Assumed to be compiled in MIRACL Core)
+ *
+ * Measures the time taken for a single pairing operation using Get_counter().
+ * Requires pre-compiled MIRACL Core library linked to the project.
+ */
+
+#include <stdio.h>
+#include <stdlib.h> // Keep for potential MIRACL Core internal use
+#include <string.h>
+
+// --- WCH Platform Headers ---
+#include "ch32v30x.h"
+#include "debug.h"
+#include "ch32v30x_rng.h"
+#include "risc_time.h"    // For Get_counter() and systick_Init()
+
+// --- MIRACL Core Headers ---
+// *** Replace with your actual MIRACL Core header paths and structure ***
+// *** These MUST match the curve you compiled (e.g., BN254) ***
+#include "core.h"
+#include "config_curve_BN254.h" // Or the correct config for your build
+#include "ecp_BN254.h"
+#include "ecp2_BN254.h"
+#include "pair_BN254.h"
+#include "fp12_BN254.h"
+#include "randapi.h"
+// *** End MIRACL Core Headers ***
+
+// --- 修正：定义 MODBYTES based on MODBITS ---
+#ifndef MODBYTES_BN254
+#define MODBYTES_BN254 ((MODBITS_BN254+7)/8)
+#endif
+// --- 结束修正 ---
+
+// --- Forward declaration ---
+void seed_csprng_from_trng(csprng *prng, size_t seed_len);
+
+// Helper function to seed csprng from hardware TRNG
+void seed_csprng_from_trng(csprng *prng, size_t seed_len) {
+    #define MAX_SEED_LEN 128
+    if (seed_len > MAX_SEED_LEN) {
+        printf("ERROR: Seed length %u too large, max is %d\r\n", (unsigned)seed_len, MAX_SEED_LEN);
+        seed_len = MAX_SEED_LEN;
+    }
+    char raw_seed[MAX_SEED_LEN];
+    octet RAW_SEED = {0, seed_len, raw_seed};
+
+    for (unsigned i = 0; i < seed_len; i += 4) {
+        while (RNG_GetFlagStatus(RNG_FLAG_DRDY) == RESET);
+        uint32_t random_word = RNG_GetRandomNumber();
+        unsigned bytes_to_copy = (seed_len - i < 4) ? (seed_len - i) : 4;
+        memcpy(RAW_SEED.val + i, &random_word, bytes_to_copy);
+    }
+    RAW_SEED.len = seed_len;
+    CREATE_CSPRNG(prng, &RAW_SEED);
+}
+
+
+int main()
+{
+    uint32_t start_time, end_time, time_pairing;
+
+    // --- CH32V Initialization ---
+    NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);
+    Delay_Init();
+    USART_Printf_Init(115200);
+    systick_Init();
+    RCC_AHBPeriphClockCmd(RCC_AHBPeriph_RNG, ENABLE);
+    RNG_Cmd(ENABLE);
+    while(RNG_GetFlagStatus(RNG_FLAG_DRDY) == RESET);
+    // --- End CH3V Initialization ---
+
+    printf("\r\nMIRACL Core Bilinear Pairing Test (BN254) on CH32V307VCT6\r\n");
+    printf("=========================================================\r\n");
+    printf("WARNING: Pairing operations are computationally intensive!\r\n");
+    printf("         Execution may take several seconds or longer.\r\n");
+
+    // --- Initialize CSPRNG ---
+    csprng rng_state;
+    printf("Seeding MIRACL Core CSPRNG from Hardware TRNG...\r\n");
+    seed_csprng_from_trng(&rng_state, 100);
+    printf("CSPRNG Seeded.\r\n");
+
+    // --- Declare MIRACL Core variables ---
+    static ECP_BN254 P;
+    static ECP2_BN254 Q;
+    static FP12_BN254 pair_result;
+    // --- 修正：现在 MODBYTES_BN254 应该已定义 ---
+    char oct_P[2 * MODBYTES_BN254 + 1]; // Buffer for G1 point output
+    char oct_Q[4 * MODBYTES_BN254 + 1]; // Buffer for G2 point output
+    octet OCT_P = {0, sizeof(oct_P), oct_P};
+    octet OCT_Q = {0, sizeof(oct_Q), oct_Q};
+
+    // --- Get Generator Points ---
+    printf("Getting generator points G1 and G2...\r\n");
+    if (!ECP_BN254_generator(&P)) {
+         printf("ERROR: Failed to get G1 generator!\r\n");
+         while(1);
+    }
+    if (!ECP2_BN254_generator(&Q)) {
+         printf("ERROR: Failed to get G2 generator!\r\n");
+         while(1);
+    }
+
+    // --- 修正：取消注释打印生成元的代码 ---
+    ECP_BN254_toOctet(&OCT_P, &P, true); // Use compressed format
+    printf("G1 Generator P (compressed) = 0x"); OCT_output(&OCT_P);
+    ECP2_BN254_toOctet(&OCT_Q, &Q, true); // Use compressed format
+    printf("G2 Generator Q (compressed) = 0x"); OCT_output(&OCT_Q);
+    // --- 结束修正 ---
+
+
+    // --- Perform Pairing Calculation e(P, Q) and Time it ---
+    printf("\r\nCalculating pairing e(P, Q)...\r\n");
+
+    start_time = Get_counter();
+
+    PAIR_BN254_ate(&pair_result, &Q, &P);
+    PAIR_BN254_fexp(&pair_result);
+
+    end_time = Get_counter();
+    time_pairing = end_time - start_time;
+
+    printf("Pairing calculation finished.\r\n");
+
+    // --- Output Results ---
+    printf("\r\n--- Pairing Result ---\r\n");
+    printf("Time Cost for e(P, Q): %lu us\r\n", time_pairing);
+
+    if (FP12_BN254_isunity(&pair_result)) {
+        printf("Result e(P, Q) is unity (identity element in GT). Unexpected.\r\n");
+    } else {
+        printf("Result e(P, Q) is NOT unity.\r\n");
+    }
+
+    printf("\r\nPairing test finished.\r\n");
+
+    while(1)
+    {
+        // Infinite loop
+    }
+}

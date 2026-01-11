@@ -1,0 +1,182 @@
+/*
+ * MIRACL Core Elliptic Curve Scalar Multiplication (ECSM) Example
+ * Curve: NIST P-256 (secp256r1) - Assumed compiled in MIRACL Core
+ * Platform: CH32V307VCT6
+ *
+ * Calculates R = k * P, where P is the generator point and k is a random scalar.
+ * Measures the time taken for the multiplication using Get_counter().
+ * Corrected ECP_mul usage and added forward declarations.
+ */
+
+#include <stdio.h>
+#include <stdlib.h> // Keep for potential MIRACL Core internal use
+#include <string.h>
+
+// --- WCH Platform Headers ---
+#include "ch32v30x.h"
+#include "debug.h"
+#include "ch32v30x_rng.h"
+#include "risc_time.h"    // For Get_counter() and systick_Init()
+
+// --- MIRACL Core Headers ---
+// *** Replace with your actual MIRACL Core header paths and structure ***
+#include "core.h"
+#include "config_curve_NIST256.h"
+#include "config_field_NIST256.h" // Needed for BIG_XXX type and MODBYTES_XXX
+#include "ecp_NIST256.h"
+#include "randapi.h"
+// *** End MIRACL Core Headers ***
+
+#ifndef MODBYTES_NIST256
+#define MODBYTES_NIST256 ((MODBITS_NIST256+7)/8)
+#endif
+
+// --- Forward declarations ---
+void seed_csprng_from_trng(csprng *prng, size_t seed_len);
+void print_big(const char *label, BIG_256_28 k);
+void print_ecp(const char *label, ECP_NIST256 *P);
+// --- 修正: 添加 OCT_output_variable_len 的函数原型 ---
+void OCT_output_variable_len(octet *w);
+
+
+// Helper function to seed csprng from hardware TRNG
+void seed_csprng_from_trng(csprng *prng, size_t seed_len) {
+    #define MAX_SEED_LEN 128
+    if (seed_len > MAX_SEED_LEN) {
+        printf("ERROR: Seed length %u too large, max is %d\r\n", (unsigned)seed_len, MAX_SEED_LEN);
+        seed_len = MAX_SEED_LEN;
+    }
+    char raw_seed[MAX_SEED_LEN];
+    octet RAW_SEED = {0, seed_len, raw_seed};
+
+    for (unsigned i = 0; i < seed_len; i += 4) {
+        while (RNG_GetFlagStatus(RNG_FLAG_DRDY) == RESET);
+        uint32_t random_word = RNG_GetRandomNumber();
+        unsigned bytes_to_copy = (seed_len - i < 4) ? (seed_len - i) : 4;
+        memcpy(RAW_SEED.val + i, &random_word, bytes_to_copy);
+    }
+    RAW_SEED.len = seed_len;
+    CREATE_CSPRNG(prng, &RAW_SEED);
+}
+
+// Helper to print big numbers (scalars)
+void print_big(const char *label, BIG_256_28 k) {
+    char k_str[MODBYTES_NIST256 * 2 + 1];
+    char k_bytes[MODBYTES_NIST256];
+    octet K_OCT = {0, MODBYTES_NIST256, k_bytes};
+    K_OCT.len = MODBYTES_NIST256;
+    BIG_256_28_toBytes(K_OCT.val, k);
+    OCT_toHex(&K_OCT, k_str);
+    printf("%s: 0x%s\r\n", label, k_str);
+}
+
+// Helper to print ECP points
+void print_ecp(const char *label, ECP_NIST256 *P) {
+    char p_str[1 + 2 * MODBYTES_NIST256]; // Size for uncompressed point
+    octet P_OCT = {0, sizeof(p_str), p_str};
+    ECP_NIST256_toOctet(&P_OCT, P, false); // Get uncompressed point
+    printf("%s: 0x", label);
+    OCT_output_variable_len(&P_OCT); // Use the forward-declared function
+    printf("\r\n");
+}
+
+
+int main()
+{
+    uint32_t start_time, end_time, time_ecsm;
+
+    // --- CH32V Initialization ---
+    NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);
+    Delay_Init();
+    USART_Printf_Init(115200);
+    systick_Init();
+    RCC_AHBPeriphClockCmd(RCC_AHBPeriph_RNG, ENABLE);
+    RNG_Cmd(ENABLE);
+    while(RNG_GetFlagStatus(RNG_FLAG_DRDY) == RESET);
+    // --- End CH3V Initialization ---
+
+    printf("\r\nMIRACL Core Elliptic Curve Scalar Multiplication (ECSM)\r\n");
+    printf("Curve: NIST P-256 (secp256r1)\r\n");
+    printf("Platform: CH32V307VCT6\r\n");
+    printf("=========================================================\r\n");
+
+    // --- Initialize CSPRNG ---
+    csprng rng_state;
+    printf("Seeding MIRACL Core CSPRNG from Hardware TRNG...\r\n");
+    seed_csprng_from_trng(&rng_state, 100);
+    printf("CSPRNG Seeded.\r\n");
+
+    // --- Declare MIRACL Core variables ---
+    static BIG_256_28 k;
+    static ECP_NIST256 P;
+    static ECP_NIST256 R;
+    // --- 修正: 暂时移除 curve_order，因为 ECP_NIST256_order 可能不存在 ---
+    // static BIG_256_28 curve_order;
+
+    // --- Get Generator Point P ---
+    printf("Getting generator point P...\r\n");
+    if (!ECP_NIST256_generator(&P)) {
+         printf("ERROR: Failed to get generator point!\r\n");
+         while(1);
+    }
+    print_ecp("Generator P", &P);
+
+    // --- Generate Random Scalar k ---
+    printf("Generating random scalar k (full range)...\r\n");
+    // --- 修正: 直接生成随机数，不限制范围 (不安全，仅用于测试乘法) ---
+    // ECP_NIST256_order(curve_order); // Commented out
+    // BIG_256_28_randomnum(k, curve_order, &rng_state); // Commented out
+    BIG_256_28_random(k, &rng_state); // Generate a random BIG of appropriate size
+    // --- 结束修正 ---
+
+    // Ensure k is not zero
+    if (BIG_256_28_iszilch(k)) {
+        BIG_256_28_inc(k, 1);
+    }
+    print_big("Scalar k   ", k);
+
+    // --- Perform Scalar Multiplication R = k * P and Time it ---
+    printf("\r\nCalculating R = k * P...\r\n");
+
+    start_time = Get_counter();
+
+    // --- 修正: 使用正确的 ECP_NIST256_mul 调用方式 ---
+    // 1. Copy P to R (Result variable)
+    ECP_NIST256_copy(&R, &P);
+    // 2. Perform R = k * R (using the 2-argument mul which modifies the point)
+    ECP_NIST256_mul(&R, k);
+    // --- 结束修正 ---
+
+    end_time = Get_counter();
+    time_ecsm = end_time - start_time;
+
+    printf("Scalar multiplication finished.\r\n");
+
+    // --- Output Results ---
+    printf("\r\n--- ECSM Result ---\r\n");
+    print_ecp("Result R   ", &R);
+    printf("Time Cost for k*P: %lu us\r\n", time_ecsm);
+
+    printf("\r\nECSM test finished.\r\n");
+
+    while(1)
+    {
+        // Infinite loop
+    }
+}
+
+// --- 修正: 将 OCT_output_variable_len 定义移到 main 之前 (或在此处提供完整定义) ---
+// This is a basic implementation if OCT_output doesn't respect octet->len
+#ifndef OCT_output_variable_len
+void OCT_output_variable_len(octet *w)
+{
+    unsigned int i;
+    // Check if w or w->val is NULL before accessing
+    if (!w || !w->val) return;
+    for (i = 0; i < w->len && i < w->max; i++) // Add check against max capacity
+    {
+        printf("%02x", w->val[i]);
+    }
+}
+#endif
+// --- 结束修正 ---
