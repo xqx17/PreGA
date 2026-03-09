@@ -4,46 +4,40 @@
 #include <time.h>
 #include <stdint.h>
 
-// ==== 1. 宏定义与配置 ====
 #define HASH_COUNT 3
 #define DEFAULT_BLOOM_SIZE 1024
 #define DEFAULT_TIME_WINDOW 3
 #define DEFAULT_THRESHOLD_RATIO 0.8
 
-// 安全索引宏
 #define GET_IDX(tbf, idx) ((idx) % (tbf)->time_window_size)
 
 typedef uint8_t counter_t;
 
-// 窗口元数据（逻辑结构）
 typedef struct time_window {
-    int size;                   // 当前逻辑窗口数量
-    int time_position_front;    // 头指针（最新/活跃）
-    int time_position_end;      // 尾指针（最旧/过期）
-    int current_time_position;  // 当前写入位置
+    int size;                  
+    int time_position_front;   
+    int time_position_end;      
+    int current_time_position;  
 } Time_Win;
 
-// 主结构体
 typedef struct {
-    int time_window_size;       // 物理最大窗口数量 (Max windows)
-    int bloom_size;             // 单个 BF 大小
-    float threshold_ratio;      // 扩容阈值
-    int time_range;             // 窗口生存时间 (秒)
+    int time_window_size;       
+    int bloom_size;             
+    float threshold_ratio;     
+    int time_range;             
     
-    Time_Win* tw;               // 窗口指针管理
-    counter_t **filter;         // Bloom Filter 位数组
+    Time_Win* tw;            
+    counter_t **filter;       
     
     int *load_counts;           
     
     time_t *window_timestamps;  
 } TimeBloomFilter;
 
-// ==== 2. 哈希函数声明 ====
 uint32_t hash_djb2(const void *key, size_t length);
 uint32_t hash_sdbm(const void *key, size_t length);
 uint32_t hash_fnv1a(const void *key, size_t length);
 
-// ==== 3. 哈希函数实现 ====
 uint32_t hash_djb2(const void *key, size_t length) {
     uint32_t hash = 5381;
     const unsigned char *str = (const unsigned char *)key;
@@ -65,8 +59,6 @@ uint32_t hash_fnv1a(const void *key, size_t length) {
     }
     return hash;
 }
-
-// ==== 4. 核心逻辑实现 ====
 
 TimeBloomFilter* create_time_bloom_filter(int bloom_size, int time_window_size, float threshold_ratio, int time_range) {
     TimeBloomFilter* tbf = (TimeBloomFilter*)malloc(sizeof(TimeBloomFilter));
@@ -216,8 +208,6 @@ void free_time_bloom_filter(TimeBloomFilter* tbf) {
     free(tbf);
 }
 
-// ==== 5. 测试代码 ====
-
 void manual_age_windows(TimeBloomFilter* tbf, int seconds) {
     for(int i = 0; i < tbf->time_window_size; i++) {
         tbf->window_timestamps[i] -= seconds;
@@ -240,10 +230,8 @@ void test_burst_traffic() {
     int last_msg = 0;
 
     for (int t = 1; t <= 30; t++) {
-        // 1. 模拟时间流逝
         manual_age_windows(tbf, 1);
 
-        // 2. 生成随机流量
         if(t < 15){
             if (abs((n_msgs-last_msg)) < 50000) {
                 n_msgs = 50000 + (rand() % 30000); 
@@ -287,4 +275,5 @@ void test_burst_traffic() {
 int main() {
     test_burst_traffic();
     return 0;
+
 }
