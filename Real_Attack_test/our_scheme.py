@@ -231,7 +231,6 @@ for d_id, dev in device_registry.items():
         c_val = dev.get_contribution()
         global_tbf.insert(c_val)
 
-    # 恢复状态
     dev.sk = original_sk
     dev.time_vec = original_time
 print("[TA] Pre-computation done.")
@@ -288,7 +287,6 @@ def attack_receiver_thread():
         try:
             data, _ = sock.recvfrom(2048)
 
-            # 生成假数据
             fake_sig = [os.urandom(DIGEST_SIZE) for _ in range(NUM_SUBKEYS)]
             fake_contrib = os.urandom(DIGEST_SIZE)
 
@@ -479,4 +477,5 @@ if __name__ == '__main__':
     t_main.start()
 
     while True:
+
         time.sleep(1)
