@@ -1,10 +1,3 @@
-// ============================================================================
-//  Module: bf_datapath (next-state 版本, 修复 multi-driven net & latch 报告)
-//  Description: o_check_result / r_element_found / r_hash_idx 均采用
-//               next-state 风格，消除综合器 latch & multi-driven 报告
-//  Standard: Verilog-2001
-// ============================================================================
-
 `timescale 1ns / 1ps
 `include "bf_defines.vh"
 
@@ -48,8 +41,8 @@ parameter DP_FSM_FINISH       = 4'b1000;
 reg [3:0]                   r_dp_current_state;
 reg [3:0]                   r_dp_next_state;
 
-reg [1:0]                   r_hash_idx;       // 寄存器
-reg [1:0]                   r_hash_idx_next;  // 新增 next-state 变量
+reg [1:0]                   r_hash_idx;       
+reg [1:0]                   r_hash_idx_next;  
 
 parameter PVT_MEM_AW        = 11;
 parameter PVT_MEM_DEPTH     = 2048;
@@ -59,8 +52,8 @@ reg  [7:0]                  r_pvt_mem_wdata;
 reg                         r_pvt_mem_wen;
 wire [7:0]                  w_pvt_mem_rdata;
 
-reg                         r_element_found;       // 寄存器
-reg                         r_element_found_next;  // 新增 next-state 变量
+reg                         r_element_found;       
+reg                         r_element_found_next;  
 
 reg [7:0]                   w_next_pvt_mem_wdata;
 
@@ -94,8 +87,8 @@ always @(posedge i_clk or negedge i_rst_n) begin
         o_buf_raddr          <= 32'h0;
     end else begin
         r_dp_current_state <= r_dp_next_state;
-        r_element_found    <= r_element_found_next; // next-state 更新
-        r_hash_idx         <= r_hash_idx_next;      // next-state 更新
+        r_element_found    <= r_element_found_next; 
+        r_hash_idx         <= r_hash_idx_next;
 
         if (i_start) begin
             r_op_type            <= i_op_type;
@@ -109,11 +102,10 @@ always @(posedge i_clk or negedge i_rst_n) begin
             end
         end
 
-        // o_check_result 逻辑
         if (r_dp_current_state == DP_FSM_FINISH) begin
             if (r_op_type == `OP_CHECK) begin
                 o_check_result <= r_element_found;
-                r_element_found <= 1'b0; // 完成后清零
+                r_element_found <= 1'b0; 
             end
         end else if (r_dp_current_state != DP_FSM_IDLE) begin
             o_check_result <= 1'b0;
@@ -170,16 +162,16 @@ always @(*) begin
     r_hash_data_is_first  = 1'b0;
     r_hash_data_is_last   = 1'b0;
 
-    r_element_found_next  = r_element_found;  // 默认保持
-    r_hash_idx_next       = r_hash_idx;       // 默认保持
-    w_next_pvt_mem_wdata  = r_pvt_mem_wdata;  // 默认保持
+    r_element_found_next  = r_element_found;  
+    r_hash_idx_next       = r_hash_idx;       
+    w_next_pvt_mem_wdata  = r_pvt_mem_wdata;  
 
     case (r_dp_current_state)
         DP_FSM_IDLE: begin
             if (i_start) begin
                 if (i_len > 0) begin
                     r_dp_next_state      = DP_FSM_HASH_START;
-                    r_hash_idx_next      = 2'b00; // 初始化
+                    r_hash_idx_next      = 2'b00;
                     if (i_op_type == `OP_CHECK)
                         r_element_found_next = 1'b1;
                     else
@@ -236,7 +228,7 @@ always @(*) begin
         DP_FSM_CHECK_NEXT: begin
             if (r_elements_processed < r_total_elements - 1) begin
                 r_dp_next_state = DP_FSM_HASH_START;
-                r_hash_idx_next = 2'b00; // 再次初始化
+                r_hash_idx_next = 2'b00; 
                 if (r_op_type == `OP_CHECK)
                     r_element_found_next = 1'b1;
                 else
@@ -294,3 +286,4 @@ single_port_sram #(
 );
 
 endmodule
+
