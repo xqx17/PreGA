@@ -255,7 +255,6 @@ def dtls_mavlink_processor():
             except Exception:
                 pass
 
-        # === UI 刷新 ===
         cost_color = RED if is_attack else GREEN
         sec_line = (
             f"{RED}[SECURITY]{RESET} "
@@ -286,4 +285,5 @@ if __name__ == '__main__':
     t_main.start()
 
     while True:
+
         time.sleep(1)
