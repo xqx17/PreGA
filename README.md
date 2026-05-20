@@ -1,18 +1,20 @@
-# An Ounce of Prevention Is Worth a Pound of Cure: A Pre-filtering Framework Against Asymmetric DoS in Group Authentication at the IoT Edge - Artifact Evaluation
+# PreGA
 
-This repository contains the artifact for **PreGA**, a pre-filtering group authentication framework for defending IoT edge systems against asymmetric denial-of-service (ADoS) attacks. It includes the Adaptive Time-Window Bloom Filter (ATWBF), PreGA protocol code, Verilog accelerator code, embedded benchmark code, real-world attack-test scripts, and demo videos.
+This repository contains **PreGA**, a pre-filtering group authentication framework for defending IoT edge systems against asymmetric denial-of-service (ADoS) attacks. It includes the Adaptive Time-Window Bloom Filter (ATWBF), PreGA protocol code, Verilog accelerator code, embedded benchmark code, real-world attack-test scripts, and demo videos.
 
+This README is written for ACM CCS artifact evaluation. It separates directly executable checks from experiments that require the physical testbed used in the paper.
 
 ## 1. Overview
 
-PreGA addresses four evaluation questions from the paper:
+The artifact is organized around the main implementation and evaluation components:
 
-| Paper Question | Artifact Evidence |
+| Component | Artifact Evidence |
 | --- | --- |
-| RQ1 Effectiveness under ADoS | `Real_Attack_test/` scripts and `video/` demos for DTLS+MAVLink and PreGA-style defense experiments. |
-| RQ2 Efficiency and hardware gain | `Scheme/PreGA/`, `Scheme/Compare/`, and `Hardware/` for embedded timing, cryptographic baselines, and Zynq-7000 XC7Z020 hardware simulation/synthesis. |
-| RQ3 ATWBF reliability | `BF/ATWBF_design.c`, `BF/ATWBF_window_expand.c`, and `BF/other/` for ATWBF behavior and Bloom-filter baselines. |
-| RQ4 ADoS load reduction | `Real_Attack_test/our_scheme.py`, `Real_Attack_test/our_scheme_DOS.py`, and paper-guided expected results for malicious-message rejection. |
+| ATWBF software implementation | `BF/ATWBF_design.c`, `BF/ATWBF_window_expand.c`, and `BF/other/` for functional behavior, adaptive-window dynamics, and Bloom-filter baselines. |
+| Hardware acceleration | `Hardware/` for Vivado 2020.x simulation/synthesis of the ATWBF accelerator on Zynq-7000 XC7Z020. |
+| PreGA embedded protocol | `Scheme/PreGA/` for initialization, signing, and verification timing on CH32V307VCT6. |
+| Cryptographic baselines | `Scheme/Compare/` for ECC/pairing-heavy timing using MIRACL Core BN254. |
+| Real-world ADoS tests | `Real_Attack_test/` scripts and `video/` demos for DTLS+MAVLink and PreGA-style defense experiments. |
 
 Repository layout:
 
@@ -201,7 +203,7 @@ The burst test uses randomized traffic, so exact message counts differ. A succes
 
 ### Experiment 1: ATWBF Functional Correctness
 
-Corresponds to: ATWBF functional validation and part of RQ3.
+Corresponds to: ATWBF functional validation and reliability experiments.
 
 ```bash
 gcc -std=c11 -O2 -Wall -Wextra BF/ATWBF_design.c -o BF/atwbf_design
