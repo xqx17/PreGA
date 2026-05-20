@@ -90,7 +90,7 @@ Estimated time and space:
 | ATWBF adaptive-window test | 1-5 min | <100 MB |
 | Vivado behavioral simulation | 5-20 min | Vivado installation plus <500 MB project output |
 | Vivado synthesis/resource check | 10-40 min | Vivado installation plus generated project output |
-| CH32V embedded timing | 30-90 min after toolchain setup | toolchain-dependent |
+| CH32V embedded timing | 5-10 min after toolchain setup | toolchain-dependent |
 | Real-world ADoS test | experiment-dependent | CSV logs usually <100 MB |
 
 ## 4. Setup
