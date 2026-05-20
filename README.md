@@ -2,8 +2,6 @@
 
 This repository contains **PreGA**, a pre-filtering group authentication framework for defending IoT edge systems against asymmetric denial-of-service (ADoS) attacks. It includes the Adaptive Time-Window Bloom Filter (ATWBF), PreGA protocol code, Verilog accelerator code, embedded benchmark code, real-world attack-test scripts, and demo videos.
 
-This README is written for ACM CCS artifact evaluation. It separates directly executable checks from experiments that require the physical testbed used in the paper.
-
 ## 1. Overview
 
 The artifact is organized around the main implementation and evaluation components:
