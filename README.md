@@ -397,7 +397,6 @@ If you use PreGA, ATWBF, the hardware accelerator, or the real-world ADoS evalua
 @inproceedings{prega2026,
   title     = {An Ounce of Prevention Is Worth a Pound of Cure: A Pre-filtering Framework Against Asymmetric DoS in Group Authentication at the IoT Edge},
   author    = {Xu},
-  booktitle = {Proceedings of the ACM SIGSAC Conference on Computer and Communications Security (CCS)},
   year      = {2026},
   note      = {Artifact and implementation for PreGA}
 }
