@@ -389,13 +389,16 @@ To change real-world serial/network settings:
 - Update `SERIAL_PORT_1`, `SERIAL_PORT_2`, `BAUD_RATE`, and `SERVER_PORT` in `Real_Attack_test/our_scheme.py` or `Real_Attack_test/edge_server_linux.py`.
 - Update `TARGET_IP`, `TARGET_PORT`, `PROCESS_COUNT`, and `ATTACK_DURATION` in the DoS scripts.
 
-## 8. Limitations & Notes
+## Citation
 
-- Absolute timing values are platform-dependent. CPU, Vivado version/settings, CH32V board clock(144Hz), compiler flags, serial devices, and network conditions can change measured latency.
-- The most portable claims are the ATWBF functional behavior, adaptive-window trend, and Vivado simulation behavior.
-- The full Figure 9/Figure 10 real-world reproduction requires MAVLink serial sources and isolated attack traffic.
-- The real-world attack scripts intentionally generate high-rate UDP traffic. Do not run them on public or shared networks.
-- The embedded firmware depends on WCH CH32V30x platform files and board initialization code.
-- `Scheme/Compare/` depends on MIRACL Core configured for BN254.
-- The hardware code is written for Vivado 2020.x targeting Zynq-7000 XC7Z020. Board-level deployment requires evaluator-specific constraints and integration.
-- Some source comments and terminal strings contain non-ASCII text. Use a UTF-8 terminal when possible.
+If you use PreGA, ATWBF, the hardware accelerator, or the real-world ADoS evaluation framework in your research, please cite the PreGA paper:
+
+```bibtex
+@inproceedings{prega2026,
+  title     = {An Ounce of Prevention Is Worth a Pound of Cure: A Pre-filtering Framework Against Asymmetric DoS in Group Authentication at the IoT Edge},
+  author    = {Xu},
+  booktitle = {Proceedings of the ACM SIGSAC Conference on Computer and Communications Security (CCS)},
+  year      = {2026},
+  note      = {Artifact and implementation for PreGA}
+}
+```
