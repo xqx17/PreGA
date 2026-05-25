@@ -398,7 +398,6 @@ If you use PreGA, ATWBF, the hardware accelerator, or the real-world ADoS evalua
   title     = {PreGA},
   author    = {Xu},
   year      = {2026},
-  doi       = {https://doi.org/10.5281/zenodo.20308868},
   note      = {Artifact and implementation for PreGA}
 }
 ```
