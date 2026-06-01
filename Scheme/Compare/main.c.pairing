@@ -28,11 +28,9 @@
 #include "randapi.h"
 // *** End MIRACL Core Headers ***
 
-// --- ÐÞÕý£º¶¨Òå MODBYTES based on MODBITS ---
 #ifndef MODBYTES_BN254
 #define MODBYTES_BN254 ((MODBITS_BN254+7)/8)
 #endif
-// --- ½áÊøÐÞÕý ---
 
 // --- Forward declaration ---
 void seed_csprng_from_trng(csprng *prng, size_t seed_len);
@@ -87,7 +85,7 @@ int main()
     static ECP_BN254 P;
     static ECP2_BN254 Q;
     static FP12_BN254 pair_result;
-    // --- ÐÞÕý£ºÏÖÔÚ MODBYTES_BN254 Ó¦¸ÃÒÑ¶¨Òå ---
+    // --- ä¿®æ­£ï¼šçŽ°åœ¨ MODBYTES_BN254 åº”è¯¥å·²å®šä¹‰ ---
     char oct_P[2 * MODBYTES_BN254 + 1]; // Buffer for G1 point output
     char oct_Q[4 * MODBYTES_BN254 + 1]; // Buffer for G2 point output
     octet OCT_P = {0, sizeof(oct_P), oct_P};
@@ -104,12 +102,10 @@ int main()
          while(1);
     }
 
-    // --- ÐÞÕý£ºÈ¡Ïû×¢ÊÍ´òÓ¡Éú³ÉÔªµÄ´úÂë ---
     ECP_BN254_toOctet(&OCT_P, &P, true); // Use compressed format
     printf("G1 Generator P (compressed) = 0x"); OCT_output(&OCT_P);
     ECP2_BN254_toOctet(&OCT_Q, &Q, true); // Use compressed format
     printf("G2 Generator Q (compressed) = 0x"); OCT_output(&OCT_Q);
-    // --- ½áÊøÐÞÕý ---
 
 
     // --- Perform Pairing Calculation e(P, Q) and Time it ---
