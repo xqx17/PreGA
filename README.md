@@ -260,8 +260,18 @@ Scheme/PreGA/risc_time.c
 Scheme/PreGA/risc_time.h
 ```
 
-4. Build the firmware in MounRiver Studio, flash it to the board, and open the WCH Serial Port Debugging Tool at 115200 baud.
-5. Reset the board and record the printed cycle or microsecond counters.
+Before building, configure the CPU frequency as follows.
+
+CPU frequency setup for 144 MHz:
+
+1. In MounRiver Studio, create the project with target MCU `CH32V307VCT6`. This selects the correct startup and linker template, but the runtime CPU frequency is controlled by the WCH system-clock source file rather than by a compiler flag.
+2. Open the generated WCH system-clock file, usually named `system_ch32v30x.c`.
+3. Select the 144 MHz HSE clock path. In common WCH CH32V30x templates, this means enabling the `SYSCLK_FREQ_144MHz_HSE` configuration or making `SetSysClock()` call `SetSysClockTo144_HSE()`. Disable the other frequency branches in the same file.
+4. Verify that `SystemCoreClock` is updated to `144000000` after system initialization, and keep `HSE_VALUE` consistent with the crystal used by the board.
+5. Keep `systick_Init()` after the standard clock/debug initialization in `main.c`. The repository timing helper uses `SystemCoreClock / 1000000 - 1` in `risc_time.c`, so `SystemCoreClock = 144000000` makes `Get_counter()` advance once per microsecond.
+6. Optional serial check: print `SystemCoreClock` once after `Delay_Init()` and before the benchmark starts. The expected value is `144000000`.
+
+After confirming the 144 MHz clock configuration, build the firmware in MounRiver Studio, flash it to the board, open the WCH Serial Port Debugging Tool at 115200 baud, reset the board, and record the printed cycle or microsecond counters.
 
 ### 3.6 Cryptographic Baselines (`Scheme/Compare/`)
 
@@ -285,14 +295,42 @@ Scheme/Compare/main.c
 Scheme/Compare/main.c.ecsm
 Scheme/Compare/main.c.pairing
 Scheme/Compare/include/lib/
+Scheme/Compare/lib/libcore.a
 ```
 
 MounRiver Studio project setup:
 
-1. Create a CH32V307VCT6 firmware project with USART debug output, SysTick, and RNG support enabled.
-2. Add the selected benchmark entry file, for example `Scheme/Compare/main.c`.
-3. Add the MIRACL Core source/object files and include path matching the benchmark curve.
-4. Build, flash, and use the WCH Serial Port Debugging Tool at 115200 baud to collect the printed timing summary.
+1. Create a CH32V307VCT6 firmware project with USART debug output, SysTick, RNG support, and the 144 MHz CPU clock configuration described in Section 3.5.
+2. Add exactly one selected benchmark entry file to each build, for example `Scheme/Compare/main.c`. Build `main.c`, `main.c.ecsm`, and `main.c.pairing` as separate benchmark images to avoid multiple `main()` definitions.
+3. Add the shared timing helper `Scheme/Compare/include/lib/risc_time.c` and its header path. The benchmark entry files include `risc_time.h` and use `Get_counter()` for microsecond timing.
+4. Add the MIRACL Core include directory in MounRiver Studio:
+
+```text
+Project -> Properties -> C/C++ Build -> Settings -> Tool Settings
+  -> GNU RISC-V Cross C Compiler -> Includes
+  -> Add: <repo>/Scheme/Compare/include/lib
+```
+
+5. Link the provided MIRACL Core static library `Scheme/Compare/lib/libcore.a`. The recommended MounRiver Studio setting is:
+
+```text
+Project -> Properties -> C/C++ Build -> Settings -> Tool Settings
+  -> GNU RISC-V Cross C Linker -> Libraries
+  -> Libraries (-l): core
+  -> Library search path (-L): <repo>/Scheme/Compare/lib
+```
+
+Use the library name `core`, not `libcore.a`, in the `Libraries (-l)` field because the linker expands `-lcore` to `libcore.a`. If MounRiver Studio does not accept an external repository path, copy `Scheme/Compare/lib/libcore.a` into a `lib/` directory inside the MounRiver project and set the library search path to `${ProjDirPath}/lib`.
+
+6. Alternative direct-link setting: add the full path to `libcore.a` under the linker miscellaneous/object-file field, for example:
+
+```text
+<repo>/Scheme/Compare/lib/libcore.a
+```
+
+Do not add `libcore.a` as a C source file. It must be passed to the linker after the benchmark object files. If the build reports undefined references to MIRACL symbols such as `ECP_BN254_mul`, `PAIR_BN254_ate`, or `FP12_BN254_pow`, re-check the include path, library search path, and link order.
+
+7. Build, flash, and use the WCH Serial Port Debugging Tool at 115200 baud to collect the printed timing summary.
 
 ### 3.7 Real-World ADoS Scripts (`Real_Attack_test/`)
 
@@ -581,9 +619,9 @@ Simulated timing summary:
 
 | Operation | Entry Point | Simulated Time (us) | Verification Signal |
 | --- | --- | ---: | --- |
-| BN254 G1 scalar multiplication | `Scheme/Compare/main.c` | 102222 | `R_G1 = k * P` completes and prints a G1 result. |
-| BN254 G2 scalar multiplication | `Scheme/Compare/main.c` | 800 | `R_G2 = k * Q` completes and prints a G2 result. |
-| BN254 GT exponentiation | `Scheme/Compare/main.c` | 579770 | `R_GT = gT ^ k` completes after generating `gT = e(P, Q)`. |
+| BN254 G1 scalar multiplication | `Scheme/Compare/main.c` | 61680 | `R_G1 = k * P` completes and prints a G1 result. |
+| BN254 G2 scalar multiplication | `Scheme/Compare/main.c` | 199902 | `R_G2 = k * Q` completes and prints a G2 result. |
+| BN254 GT exponentiation | `Scheme/Compare/main.c` | 251236 | `R_GT = gT ^ k` completes after generating `gT = e(P, Q)`. |
 
 Simulated serial result for `Scheme/Compare/main.c`:
 
@@ -598,30 +636,27 @@ Generating random scalar k...
 
 Calculating R_G1 = k * P (Exponentiation in G1)...
 G1 calculation finished.
-Time Cost (G1): 102222 us
+Time Cost (G1): 61680 us
 
 Calculating R_G2 = k * Q (Exponentiation in G2)...
 G2 calculation finished.
-Time Cost (G2): 800 us
-
-Generating element gT = e(P, Q) in GT...
-Generated gT in 688920 us.
+Time Cost (G2): 199902 us
 
 Calculating R_GT = gT ^ k (Exponentiation in GT)...
 GT calculation finished.
-Time Cost (GT): 579770 us
+Time Cost (GT): 251236 us
 
 --- Exponentiation Timing Summary (BN254) ---
-  G1 (k*P): 102222 us
-  G2 (k*Q): 800 us
-  GT (gT^k): 579770 us
+  G1 (k*P): 61680 us
+  G2 (k*Q): 199902 us
+  GT (gT^k): 251236 us
 Test finished.
 ```
 
 Result interpretation:
 
-- The benchmark set covers SM3-256 hashing, secp256r1 elliptic-curve multiplication, BN254 G1/G2 group operations, and BN254 bilinear pairing.
-- The asymmetric-cryptography measurements quantify the heavier operations used by comparison schemes, while SM3-256 represents the lightweight hash primitive used by PreGA.
+- The benchmark set covers secp256r1 elliptic-curve multiplication, BN254 G1/G2 group operations, and BN254 bilinear pairing.
+- The asymmetric-cryptography measurements quantify the heavier operations used by comparison schemes.
 - The simulated verification confirms the expected benchmark output structure and success indicators for each primitive.
 - Exact values depend on the MIRACL build options, curve configuration, compiler optimization level, and CH32V307VCT6 clock settings.
 
